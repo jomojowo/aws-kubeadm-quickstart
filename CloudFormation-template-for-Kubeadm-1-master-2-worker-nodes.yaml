@@ -48,8 +48,12 @@ Parameters:
   InstanceType:
     Description: EC2 instance type for the cluster.
     Type: String
-    Default: m4.large
+    Default: t2.medium
     AllowedValues:
+    - t3.medium
+    - t2.medium
+    - t2.large
+    - t3.large
     - c4.2xlarge
     - c4.4xlarge
     - c4.8xlarge
@@ -279,6 +283,8 @@ Resources:
         # The ClusterSecGroupCrossTalk rules allow all instances in the same stack to communicate internally
         # The ClusterSecGroupAllow22 rules allow external communication on port 22 from a chosen CIDR range
         # The ClusterSecGroupAllow6443FromLB rules allow HTTPS access to the load balancer on port 6443
+        GroupSet:
+        - !Ref ClusterSecGroup
       Tags:
       - Key: Name
         Value: k8s-master
@@ -604,7 +610,7 @@ Resources:
               apt-get update -y
 
               # Get a copy of Kubeadm config from created S3 bucket
-              aws s3 cp s3://${ClusterInfoBucket}/cluster-info.yaml /tmp/cluster-info.yaml && kubeadm join --node-name="$(hostname -f 2>/dev/null || curl http://169.254.169.254/latest/meta-data/local-hostname)" --token="gora21.cxmfb878wqhddry0" --discovery-token-unsafe-skip-ca-verification ${K8sMasterInstance.PrivateIp}:6443
+              aws s3 cp s3://${ClusterInfoBucket}/cluster-info.yaml /tmp/cluster-info.yaml && kubeadm join --node-name="$(hostname -f 2>/dev/null || curl http://169.254.169.254/latest/meta-data/local-hostname)" --token="gora21.cxmfb878wqhddry0" --discovery-file=/tmp/cluster-info.yaml
 
               # Signal the status from cfn-signal
               /opt/aws/bin/cfn-signal -e $? --stack '${AWS::StackName}' --region '${AWS::Region}' --resource K8sNodeGroup
@@ -716,4 +722,4 @@ Outputs:
 
   JoinNodes:
     Description: Command to join more nodes to this cluster.
-    Value: !Sub "aws s3 cp s3://${ClusterInfoBucket}/cluster-info.yaml /tmp/cluster-info.yaml && kubeadm join --node-name=\"$(hostname -f 2>/dev/null || curl http://169.254.169.254/latest/meta-data/local-hostname)\" --token=gora21.cxmfb878wqhddry0 --discovery-file=/tmp/cluster-info.yaml ${K8sMasterInstance.PrivateIp}:6443"
+    Value: !Sub "aws s3 cp s3://${ClusterInfoBucket}/cluster-info.yaml /tmp/cluster-info.yaml && kubeadm join --node-name=\"$(hostname -f 2>/dev/null || curl http://169.254.169.254/latest/meta-data/local-hostname)\" --token=gora21.cxmfb878wqhddry0 --discovery-file=/tmp/cluster-info.yaml"
